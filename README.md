@@ -1,2 +1,2 @@
 # Analysis-of-Social-Media-Influence-on-COVID-19-Vaccination-Uptake-
-analyze the influence of social media on COVID-19 Vaccination Uptake for three countries, using R. Conducted a Sentiment Analysis, and created a WorldCloud showing our findings.
+Analyzing the influence of social media on COVID-19 Vaccination Uptake for three countries, using R. Conducted a Sentiment Analysis, and created a WorldCloud showing our findings.
