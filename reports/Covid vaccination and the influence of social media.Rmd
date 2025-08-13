@@ -1,0 +1,264 @@
+---
+title: "Covid vaccines and social media influence"
+author: "Paloma Guth Kronbauer, Sat Barseghyan, Kaashya Khandelwal"
+date: "12/15/2023"
+output:
+  html_document:
+    theme: journal
+    highlight: monochrome
+---
+```{r, include = FALSE, message=FALSE, warning=FALSE}
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(tidytext)
+library(readxl)
+library(ggplot2)
+library(wordcloud)#used to create the word cloud graph
+library(RColorBrewer)#color pallet for the word cloud
+library(tm)#package for text mining - create object that help in the creation of the word cloud plot
+library(viridis)
+library (forcats)
+library(grid)#used to add the source for the word cloud at the bottom of the graph
+```
+
+
+```{r, include = FALSE, message=FALSE, warning=FALSE}
+India_text_tidy <- read_csv("data//tidy//India_text_tidy.csv") #India word cloud and sentimental analysis graph
+
+Canada_text_tidy <- read_csv("data//tidy//Canada_text_tidy.csv") #Canada word cloud and sentimental analysis graph
+
+owid_covid_data <- read_csv("data//tidy//owid-covid-data.csv") #General analysis of vaccination trends (Globally, Canada and India)
+```
+
+# Research Background: Analyzing the Influence of Social Media on COVID-19 Vaccination Uptake
+The COVID-19 pandemic has had an unprecedented global impact, prompting swift efforts to develop and administer vaccines to curb the spread of the virus. As vaccination campaigns rolled out worldwide, the role of social media in shaping public perceptions, attitudes, and behaviors towards COVID-19 vaccines became increasingly evident. In our data science project, we aim to conduct a comprehensive analysis of COVID-19 vaccinations, coupled with sentiment analysis of related tweets, and a global comparison to understand the influence of social media on vaccination trends.
+
+## Rationale for the study:
+
+- <span style="font-weight:bold;">Rapid Information Dissemination:</span>
+Social media platforms serve as rapid channels for information dissemination. During the pandemic, these platforms played a pivotal role in circulating updates about vaccine development, distribution, and effectiveness. Understanding how information spreads on social media is crucial for comprehending its impact on public awareness and vaccine acceptance.
+
+- <span style="font-weight:bold;">Vaccine Hesitancy:</span>
+Vaccine hesitancy, fueled in part by misinformation and myths, emerged as a significant challenge in achieving widespread vaccination coverage. By analyzing social media content, we aim to identify prevalent narratives and sentiments that may contribute to vaccine hesitancy, enabling targeted interventions to address misinformation.
+
+- <span style="font-weight:bold;">Public Sentiment Analysis:</span>
+Tweets and posts on social media platforms often reflect public sentiment towards COVID-19 vaccinations. Our analysis seeks to uncover not only positive or negative sentiments but also the underlying factors influencing public opinions. This nuanced understanding is vital for public health campaigns and communication strategies.
+
+- <span style="font-weight:bold;">Global Comparison:</span>
+Beyond analysis that spanned both ends of the sentiment spectrum, examining countries with the highest number of negative comments as well as those with the most positive comments, our project includes a global perspective to compare vaccination trends and sentiments across regions. This broader view allows us to identify common patterns, global challenges, and potential areas for collaborative efforts in enhancing vaccine uptake.
+
+
+By conducting this multifaceted analysis, our goal is to provide data-driven insights that contribute to the understanding of the complex interplay between social media, public perceptions, and COVID-19 vaccination outcomes. Through this research, we aim to inform public health strategies and communication initiatives that can foster greater vaccine acceptance and contribute to the global fight against the COVID-19 pandemic.
+
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.alt= "Line graph depicting the daily COVID-19 vaccine doses administered, with a 7-day rolling average. The graph shows trends in doses administered for the locations World, Canada, and India from January 1, 2020, to January 1, 2023. The y-axis represents the dose of vaccinations in million per day. The graph is color-coded by location, and the caption cites the data source as Mathieu, E., Ritchie, H., Ortiz-Ospina, E. et al. A global database of COVID-19 vaccinations. Nat Hum Behav (2021).", fig.cap = "Fig 1. A plot of COVID-19 vaccinations."}
+
+owid_covid_data |>
+  group_by(iso_code)|>
+  select(iso_code, location, date, new_vaccinations)|>#the graph will be plotted for new_vaccinations and date based on location
+  filter(!is.na(new_vaccinations), location %in% c("World", "Canada", "India"), between(date, as.Date('2020-01-01'), as.Date('2023-01-01')))|>#the data plotted was limited to provide a better understanding of the trends in the graph
+  arrange(date) |>
+ggplot(aes(x = date, y=new_vaccinations/1e7, color=fct_reorder2
+           (location, new_vaccinations, date, max))) + # the y-axis was represented in scientific notation so we needed to divide by 1e7 and after that add the M symbol for 'million'
+  geom_line() +
+  labs(title = "Daily COVID-19 Vaccine Doses Administered with 7-day Rolling Average",
+       x = "Date",
+       y = "Doses Administered",
+       color= "Location",
+       caption="Mathieu, E., Ritchie, H., Ortiz-Ospina, E. et al. A global database of COVID-19 vaccinations. Nat Hum Behav (2021)") +
+  theme_minimal()+
+  scale_y_continuous(labels = function(x) paste0(x, "M")) + #it added the 'M' symbol after the labelled numbers in the y-axis - better understanding for the reader
+  scale_color_viridis(discrete=TRUE) #color blind friendly pallet
+```
+
+# Country with most positive comments - India: 
+
+## Analysis of COVID-19-Related Tweets in India:
+The dataset under consideration comprises text data extracted from tweets related to COVID-19 in India. The goal of this analysis is to uncover prevalent themes and patterns within the textual content, shedding light on the most frequently mentioned words and topics.
+
+- <span style="font-weight:bold;">Data Preprocessing:</span>
+
+To ensure a clean and focused analysis, we performed extensive text preprocessing on the dataset. This involved the removal of URLs, Twitter mentions, special characters, line breaks, punctuation, and numeric values. Additionally, common English stopwords were eliminated, and the remaining text was converted to lowercase for consistency.
+
+- <span style="font-weight:bold;">Term Frequency Analysis</span>
+
+Utilizing the processed text data, we generated a term-document matrix (TDM) to quantify the frequency of each word across the entire corpus. The resulting matrix was transformed into a data frame, allowing us to create a word cloud that visually represents the most frequently occurring terms.
+
+## Wordcloud Insights
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.alt= "Word cloud representing the most frequent words in India tweets related to COVID-19.  The resulting word cloud visualizes the frequency of words, with larger font sizes indicating higher frequencies. The caption cites the data source as Arunava Kr. Chakraborty's COVID-19 Twitter Dataset on Kaggle.", fig.cap= "Fig 2. India COVID tweets word cloud"}
+
+text <- India_text_tidy$word #assigns the data from the column word in India_text_tidy to the variable 'text'
+docs <- Corpus(VectorSource(text)) #it creates a corpus (a collection of text documents) from the 'text' variable using the Corpus function from the tm package.
+
+#The lines below remove URLs, Twitter handles, the string "amp", newline characters, punctuation, and numbers
+docs <- tm_map(docs, content_transformer(function(x) gsub("https\\S*", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("@\\S*", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("amp", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("[\r\n]", "", x)))
+docs <- tm_map(docs, removePunctuation)
+docs <- tm_map(docs, removeNumbers)
+
+#Most common words as 'covid' were removed from the plot as they would not represent a meaningful data that could be analysed as a sentiment
+docs <- tm_map(docs, content_transformer(function(x) gsub("covid", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("covid19", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("tco", "", x)))
+
+docs <- tm_map(docs, content_transformer(tolower)) #making everything lowercase so the comparison between terms become easier
+docs <- tm_map(docs, removeWords, stopwords("english")) #remove all stop words 
+
+dtm <- TermDocumentMatrix(docs) #it creates a term-document matrix from the preprocessed corpus.
+matrix <- as.matrix(dtm) #it converts the term-document matrix into a regular matrix.
+words <- sort(rowSums(matrix), decreasing = TRUE) #it computes the total frequency of each word in the dataset and sorts them in decreasing order.
+df <- data.frame(word = names(words), freq = words) # it creates a data frame ('df') with columns 'word' and 'freq'
+
+colors <- brewer.pal(9, "GnBu") #color blind friendly pallet
+
+#general settings for the display of the word clour plot
+wordcloud(words = df$word, freq = df$freq, min.freq = 1,           
+          max.words = 200, random.order = FALSE, rot.per = 0.35,            
+          colors = colors, scale = c(2, 0.5), random.color = TRUE,
+          min.size = 2, max.size = 6, linewidth = 0.5,
+          fontFamily = "serif", backgroundColor = "white")
+
+grid.text("Data source: Arunava Kr. Chakraborty's COVID-19 Twitter Dataset on Kaggle\n(https://www.kaggle.com/datasets/arunavakrchakraborty/covid19-twitter-dataset)", x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 9, fontface = "italic")) #word clouds do not have the same as ggplot lab() - so this is how we found a way to display the source for the data we used to created the plot together with the plot and in a non distracting way
+
+```
+
+
+The word cloud provides an immediate visual overview of the dominant themes in COVID-19-related tweets. The size and color intensity of each word in the cloud correspond to its frequency in the dataset.
+
+- <span style="font-weight:bold;">Prominent Themes:</span>
+Notably, the term "covid" appears to be one of the most frequently mentioned words, indicating a strong focus on the pandemic itself.
+Other prevalent terms, such as "vaccine," "India," and potentially "variants," suggest a keen interest in vaccination efforts and the evolving nature of the virus.
+
+- <span style="font-weight:bold;">Public Sentiment:</span>
+By observing the most frequently mentioned terms, we gain insights into the public discourse surrounding COVID-19. Positive terms may indicate support for vaccination campaigns or positive developments, while negative terms could reflect concerns or challenges.
+
+## Sentimental analysis insight
+  In the sentiment analysis plot, we observe an overarching positive sentiment towards vaccinations, as the analysis delves into the sentiments expressed in tweets related to vaccination in India. Notably, the data reveals a prevailing positive sentiment, with a noteworthy concentration of tweets exhibiting elevated sentiment scores. Specifically, among these, a distinctive set of tweets, exemplified by Tweet ID ~7500, stands out prominently with an exceptionally high sentiment score of 5.0, presenting a striking contrast to the general sentiment trends observed in the broader data set. This unique insight sheds light on the diverse range of sentiments expressed within the discourse on vaccinations, emphasizing the nuanced nature of public opinion in this particular context.
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.alt= "Line chart depicting sentimental analysis of tweets related to COVID-19 in India. The x-axis represents the index of tweets, while the y-axis shows the sentimental values. Each line corresponds to a different sentimental value, color-coded for clarity. The chart title is 'Tweets Sentimental Analysis,' with a subtitle emphasizing the visual representation of sentiments expressed through tweets. Axes are labeled as 'Tweet ID' (x-axis) and 'Sentimental Value' (y-axis), and the color legend indicates different sentiments. The caption attributes the source to the COVID-19 Twitter Dataset by Arunava Kr. Chakraborty on Kaggle.", fig.cap= "Fig 3. Sentimental analysis line chart about COVID tweets in India"}
+
+India_text_tidy|> #original data set and how this one was created is described in the Rmd 'twitter'
+  group_by(created_at) |>
+ggplot(aes(x = index, y = value, color=value)) +
+  geom_line() +
+  scale_color_viridis_c()+ #color blind friendly pallet
+  theme_minimal() +          
+  labs(title = "Tweets sentimental analysis",
+       subtitle = "Visual representation of sentiments about COVID-19 expressed through tweets",
+       x = "Tweet ID",
+       y = "Sentimental value",
+       color = "Sentiments",
+       caption = "source: COVID-19 Twitter Dataset by Arunava Kr. Chakraborty, Kaggle (https://www.kaggle.com/datasets/arunavakrchakraborty/covid19-twitter-dataset)")
+```
+
+
+# Country with most negative comments: 
+
+## Analysis of COVID-19-Related Tweets in Canada
+
+The dataset under consideration consists of text data extracted from tweets related to COVID-19 in Canada. The primary objective of this analysis is to unravel prevalent themes and discourse patterns within the textual content, offering valuable insights into the most frequently discussed topics.
+
+- <span style="font-weight:bold;">Data Preprocessing:</span>
+
+To ensure a focused and meaningful analysis, extensive text preprocessing was conducted on the dataset. This involved the removal of URLs, Twitter mentions, special characters, line breaks, punctuation, and numeric values. Common English stopwords were also eliminated, and the remaining text was converted to lowercase to maintain consistency.
+
+- <span style="font-weight:bold;">Term Frequency Analysis:</span>
+
+Leveraging the processed text data, we constructed a term-document matrix (TDM) to quantify the frequency of each word across the entire corpus. The resulting matrix was then transformed into a data frame, facilitating the creation of a word cloud that visually encapsulates the most frequently occurring terms.
+
+## Word Cloud Insights:
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.alt= "Word cloud representing the most frequent words in Canada tweets related to COVID-19.  The resulting word cloud visualizes the frequency of words, with larger font sizes indicating higher frequencies. The caption cites the data source as Arunava Kr. Chakraborty's COVID-19 Twitter Dataset on Kaggle.", fig.cap= "Fig 4. Canada COVID tweets word cloud"}
+
+text <- Canada_text_tidy$word #it assign data from word column in Canada_text_tidy to the variable 'text'
+docs <- Corpus(VectorSource(text)) #create a corpus (collection of text files)
+
+#The lines below remove URLs, Twitter handles, the string "amp", newline characters, punctuation, and numbers
+docs <- tm_map(docs, content_transformer(function(x) gsub("https\\S*", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("@\\S*", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("amp", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("[\r\n]", "", x)))
+docs <- tm_map(docs, removePunctuation)
+
+
+docs <- tm_map(docs, removeNumbers)
+
+docs <- tm_map(docs, content_transformer(function(x) gsub("covid", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("covid19", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("tco", "", x)))
+
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeWords, stopwords("english"))
+
+dtm <- TermDocumentMatrix(docs) 
+matrix <- as.matrix(dtm) 
+words <- sort(rowSums(matrix), decreasing = TRUE) 
+df <- data.frame(word = names(words), freq = words)
+
+colors <- brewer.pal(9, "GnBu") #color blind friendly pallet
+
+#General settings for the display of the word cloud plot
+wordcloud(words = df$word, freq = df$freq, min.freq = 1,           
+          max.words = 200, random.order = FALSE, rot.per = 0.35,            
+          colors = colors, scale = c(2, 0.5), random.color = TRUE,
+          min.size = 2, max.size = 6, linewidth = 0.5,
+          fontFamily = "serif", backgroundColor = "white")
+
+grid.text("Data source: Arunava Kr. Chakraborty's COVID-19 Twitter Dataset on Kaggle\n(https://www.kaggle.com/datasets/arunavakrchakraborty/covid19-twitter-dataset)", x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 9, fontface = "italic")) #source for the data we used to create this plot
+
+```
+
+The resulting word cloud serves as a visual representation of the dominant themes within COVID-19-related tweets in Canada. Each word's size and color intensity correspond to its frequency in the dataset, providing an immediate and impactful overview.
+
+- <span style="font-weight:bold;">Prominent Themes:</span>
+Notably, the term "covid" emerges as one of the most frequently mentioned words, indicating a significant focus on the pandemic itself.
+Other prevalent terms, such as "vaccine," "Canada," and potentially "health," suggest a keen interest in vaccination efforts and the possible health concerns attached to this.
+
+- <span style="font-weight:bold;">Public Sentiment:</span>
+By examining the most frequently mentioned terms, we gain insights into the prevailing sentiments surrounding COVID-19 in Canada. Positive terms may indicate support for vaccination campaigns or positive developments, while negative terms could reflect concerns or challenges.
+
+- <span style="font-weight:bold;">Key Discourse Points:</span>
+Specific terms that stand out in the word cloud can be further explored to identify key discourse points, potential influencers, or critical topics shaping the COVID-19 conversation in Canada.
+
+
+## Sentimental Analysis Insights:
+  In the sentiment analysis plot, a prevailing negative sentiment towards vaccinations emerges, as the analysis scrutinizes sentiments expressed in tweets about vaccination in Canada. The plot distinctly captures the tone surrounding these discussions, revealing an overarching trend of pessimism. Noteworthy is the discernible dip in sentiment scores, indicating a general inclination towards negativity in the broader public discourse on vaccinations. 
+  Further underscoring this trend, a subset of tweets, exemplified by Tweet ID ~1250, stands out with particularly pronounced lower sentiment scores, reaching as low as -4. This specific cluster of tweets serves as a focal point, highlighting the existence of intensified negative sentiments within the data set, thereby offering valuable insights into the diverse and polarized nature of public opinions surrounding vaccinations in Canada.
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.alt= "Line chart depicting sentimental analysis of tweets related to COVID-19 in India. The x-axis represents the index of tweets, while the y-axis shows the sentimental values. Each line corresponds to a different sentimental value, color-coded for clarity. The chart title is 'Tweets Sentimental Analysis,' with a subtitle emphasizing the visual representation of sentiments expressed through tweets. Axes are labeled as 'Tweet ID' (x-axis) and 'Sentimental Value' (y-axis), and the color legend indicates different sentiments. The caption attributes the source to the COVID-19 Twitter Dataset by Arunava Kr. Chakraborty on Kaggle.", fig.cap= "Fig 5. Sentimental analysis line chart about COVID tweets in Canada"}
+
+Canada_text_tidy|> #the original data set and how this was created can be found in the Rmd 'twitter'
+  group_by(created_at) |>
+ggplot(aes(x = index, y = value, color=value)) +
+  geom_line() +
+  scale_color_viridis_c() +  
+  theme_minimal() +          
+  labs(title = "Tweets sentimental analysis",
+       subtitle = "Visual representation of sentiments about COVID-19 expressed through tweets",
+       x = "Tweet ID",
+       y = "Sentimental value",
+       color = "Sentiments",
+       caption = "source: COVID-19 Twitter Dataset by Arunava Kr. Chakraborty, Kaggle (https://www.kaggle.com/datasets/arunavakrchakraborty/covid19-twitter-dataset)")
+```
+
+# Conclusion
+
+In this data science project, we delved into the intricate interplay between social media and COVID-19 vaccination trends across three distinct countries: India, Canada, and a global perspective. The overarching objective was to decipher the influence of social media on public perceptions, attitudes, and behaviors related to COVID-19 vaccines.
+
+## Implications and Future Directions:
+
+- <span style="font-weight:bold;">Policy Recommendations:</span>
+The insights obtained from this analysis can inform policymakers, public health officials, and communication strategists. Tailored interventions addressing specific concerns or misconceptions identified in the analysis can contribute to more effective vaccination campaigns.
+
+- <span style="font-weight:bold;">Continued Monitoring:</span>
+Social media remains a dynamic platform, and public sentiments are subject to change. Continuous monitoring and analysis of social media trends are essential for adapting strategies and interventions in real-time.
+
+- <span style="font-weight:bold;">Collaborative Efforts:</span>
+The global comparison highlights the importance of collaborative efforts in addressing common challenges. Sharing best practices and lessons learned can contribute to a more coordinated and impactful global response to the ongoing pandemic.
+
+In conclusion, this project serves as a data-driven exploration into the intricate relationship between social media dynamics and COVID-19 vaccination outcomes. The findings and insights obtained aim to contribute meaningfully to the ongoing efforts to enhance vaccine acceptance and combat the global COVID-19 pandemic.
+

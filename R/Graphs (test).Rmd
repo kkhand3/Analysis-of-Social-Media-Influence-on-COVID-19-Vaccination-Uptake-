@@ -1,0 +1,144 @@
+---
+title: "Graphs"
+author: "Paloma Guth Kronabuer"
+date: "12/13/2023"
+output: html_document
+---
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(tidytext)
+library(readxl)
+library(ggplot2)
+library(wordcloud)
+library(RColorBrewer)
+library(tm)
+library(viridis)
+```
+
+```{r}
+India_text_tidy <- read_csv("//home/rstudio/courses/2023-24-semester1-mscs-164/Project/Sat_Paloma_Kaashya_Project/India_text_tidy.csv")
+
+Canada_text_tidy <- read_csv("//home/rstudio/courses/2023-24-semester1-mscs-164/Project/Sat_Paloma_Kaashya_Project/Canada_text_tidy.csv")
+
+```
+
+This is the link for the page I used as instructions: https://towardsdatascience.com/create-a-word-cloud-with-r-bde3e7422e8a
+
+New wordcloud for India
+```{r}
+text <- India_text_tidy$word
+docs <- Corpus(VectorSource(text))
+
+docs <- tm_map(docs, content_transformer(function(x) gsub("https\\S*", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("@\\S*", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("amp", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("[\r\n]", "", x)))
+docs <- tm_map(docs, removePunctuation)
+docs <- tm_map(docs, removeNumbers)
+
+docs <- tm_map(docs, content_transformer(function(x) gsub("covid", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("covid19", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("tco", "", x)))
+
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeWords, stopwords("english"))
+
+dtm <- TermDocumentMatrix(docs) 
+matrix <- as.matrix(dtm) 
+words <- sort(rowSums(matrix), decreasing = TRUE) 
+df <- data.frame(word = names(words), freq = words)
+
+colors <- brewer.pal(9, "GnBu")
+
+wordcloud(words = df$word, freq = df$freq, min.freq = 1,           
+          max.words = 200, random.order = FALSE, rot.per = 0.35,            
+          colors = colors, scale = c(2, 0.5), random.color = TRUE,
+          min.size = 2, max.size = 6, linewidth = 0.5,
+          fontFamily = "serif", backgroundColor = "white")
+
+title(#dont worry about this - I am just trying to add the source for the graph at the end
+  main = "Data source: Arunava Kr. Chakraborty's COVID-19 Twitter Dataset on Kaggle\n(https://www.kaggle.com/datasets/arunavakrchakraborty/covid19-twitter-dataset)",
+  line = -1.5,  # Adjust the line parameter to control the distance from the plot
+  col.main = "gray",
+  cex.main = 0.8
+)
+
+```
+
+
+
+
+New wordcloud for Canada:
+
+
+```{r}
+text <- Canada_text_tidy$word
+docs <- Corpus(VectorSource(text))
+
+docs <- tm_map(docs, content_transformer(function(x) gsub("https\\S*", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("@\\S*", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("amp", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("[\r\n]", "", x)))
+docs <- tm_map(docs, removePunctuation)
+
+
+docs <- tm_map(docs, removeNumbers)
+
+docs <- tm_map(docs, content_transformer(function(x) gsub("covid", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("covid19", "", x)))
+docs <- tm_map(docs, content_transformer(function(x) gsub("tco", "", x)))
+
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeWords, stopwords("english"))
+
+dtm <- TermDocumentMatrix(docs) 
+matrix <- as.matrix(dtm) 
+words <- sort(rowSums(matrix), decreasing = TRUE) 
+df <- data.frame(word = names(words), freq = words)
+
+colors <- brewer.pal(9, "GnBu")
+
+wordcloud(words = df$word, freq = df$freq, min.freq = 1,           
+          max.words = 200, random.order = FALSE, rot.per = 0.35,            
+          colors = colors, scale = c(2, 0.5), random.color = TRUE,
+          min.size = 2, max.size = 6, linewidth = 0.5,
+          fontFamily = "serif", backgroundColor = "white")
+
+```
+
+
+```{r}
+India_text_tidy|>
+  group_by(created_at) |>
+ggplot(aes(x = index, y = value, color=value)) +
+  geom_line() +
+  scale_color_viridis_c()+
+  theme_minimal() +          
+  labs(title = "Tweets sentimental analysis",
+       subtitle = "Visual representation of sentiments about COVID-19 expressed through tweets",
+       x = "Tweet ID",
+       y = "Sentimental value",
+       color = "Sentiments",
+       caption = "source: COVID-19 Twitter Dataset by Arunava Kr. Chakraborty, Kaggle (https://www.kaggle.com/datasets/arunavakrchakraborty/covid19-twitter-dataset)")
+#probably change colors  
+#sat comment - I like the blues
+```
+
+```{r}
+Canada_text_tidy|>
+  group_by(created_at) |>
+ggplot(aes(x = index, y = value, color=value)) +
+  geom_line() +
+  scale_color_viridis_c() + 
+  theme_minimal() +          
+  labs(title = "Tweets sentimental analysis",
+       subtitle = "Visual representation of sentiments about COVID-19 expressed through tweets",
+       x = "Tweet ID",
+       y = "Sentimental value",
+       color = "Sentiments",
+       caption = "source: COVID-19 Twitter Dataset by Arunava Kr. Chakraborty, Kaggle (https://www.kaggle.com/datasets/arunavakrchakraborty/covid19-twitter-dataset)")
+```
+

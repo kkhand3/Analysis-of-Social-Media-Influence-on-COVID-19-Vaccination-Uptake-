@@ -1,0 +1,256 @@
+---
+title: "twitter_data"
+author: "Paloma Guth Kronabuer, Kaashya Khandelwal, Sat Barseghyan"
+date: "12/12/2023"
+output: html_document
+---
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(tidytext)
+library(readxl)
+```
+
+```{r}
+#April to June 2020
+general_tweets_AprJun20<-read_csv("data//raw//Covid-19 Twitter Dataset (Apr-Jun 2020).csv")
+
+tidy_AprJun20<-general_tweets_AprJun20|> #tidying the data to make it smaller and more readable
+  select(original_text, lang, place, compound, neg, neu, pos, sentiment, created_at)
+
+tidy_AprJun20$city <- ifelse(grepl(",", tidy_AprJun20$place), sub(",.*", "", tidy_AprJun20$place), NA)
+tidy_AprJun20$country <- ifelse(grepl(",", tidy_AprJun20$place), sub(".*,\\s*", "", tidy_AprJun20$place), tidy_AprJun20$place)
+
+tidy_AprJun20<-tidy_AprJun20|>
+  mutate(sentiment_int = recode(sentiment, 'neg' = -1, 'pos' = 1, 'neu' = 0))
+
+############################
+
+#April to June 2021
+general_tweets_AprJun21<-read_csv("data//raw//Covid-19 Twitter Dataset (Apr-Jun 2021).csv")
+
+tidy_AprJun21<-general_tweets_AprJun21|>#tidying the data
+  select(original_text, lang, place, compound, neg, neu, pos, sentiment, created_at)
+
+tidy_AprJun21$city <- ifelse(grepl(",", tidy_AprJun21$place), sub(",.*", "", tidy_AprJun21$place), NA)
+tidy_AprJun21$country <- ifelse(grepl(",", tidy_AprJun21$place), sub(".*,\\s*", "", tidy_AprJun21$place), tidy_AprJun21$place)
+
+tidy_AprJun21<-tidy_AprJun21|>
+  mutate(sentiment_int = recode(sentiment, 'neg' = -1, 'pos' = 1, 'neu' = 0))
+
+#######################################
+
+#August to September 2020
+general_tweets_AugSep20<-read_csv("data//raw//Covid-19 Twitter Dataset (Aug-Sep 2020).csv")
+
+tidy_AugSep20<-general_tweets_AugSep20|> #tidying the data
+  select(original_text, lang, place, compound, neg, neu, pos, sentiment, created_at)
+
+tidy_AugSep20$city <- ifelse(grepl(",", tidy_AugSep20$place), sub(",.*", "", tidy_AugSep20$place), NA)
+tidy_AugSep20$country <- ifelse(grepl(",", tidy_AugSep20$place), sub(".*,\\s*", "", tidy_AugSep20$place), tidy_AugSep20$place)
+
+tidy_AugSep20<-tidy_AugSep20|>
+  mutate(sentiment_int = recode(sentiment, 'neg' = -1, 'pos' = 1, 'neu' = 0))
+
+###############
+#Canada tweets tidy
+Canada_tweets <- read_csv("data//raw//Canada_tweets.csv")
+
+###############
+#India tweets tidy
+India_tweets <- read_csv("data//raw//India_tweets.csv")
+
+
+```
+
+```{r}
+lexicon_english <- get_sentiments("afinn")#package from texttidy to analyse sentimental data
+```
+
+```{r}
+#Get the positive and negative countries related to each tweet dataset and at the end discover which countries had a more positive of negative feeling towrds covid vaccinations
+pos_AprJun20<-tidy_AprJun20|>
+  group_by(country)|>
+  filter(sentiment_int==1)|>
+  mutate(nu=sum(sentiment_int))|>
+  arrange(desc(nu))|>
+  select(country,nu, sentiment_int)|>
+  drop_na()|>
+  distinct(country, nu)|>
+  head(n=3)
+
+neg_AprJun20<-tidy_AprJun20|>
+  group_by(country)|>
+  filter(sentiment_int==-1)|>
+  mutate(nu=sum(sentiment_int))|>
+  arrange(nu)|>
+  select(country, nu, sentiment_int)|>
+  drop_na()|>
+  filter(!(country %in% c("India", "USA", "England", "United States")))|>#since these countries are the biggest one in population they will be the top in both analysis
+  #We decided to eliminate them from the negative analysis because their percentage in positive comments was higher than negative and they only were in the top because of their population size
+  distinct(country, nu)|>
+  head(n=3)
+ 
+
+pos_AprJun21<-tidy_AprJun21|>
+  group_by(country)|>
+  filter(sentiment_int==1)|>
+  mutate(nu=sum(sentiment_int))|>
+  arrange(desc(nu))|>
+  select(country,nu, sentiment_int)|>
+  drop_na()|>
+  distinct(country, nu)|>
+  head(n=3)
+
+neg_AprJun21<-tidy_AprJun21|>
+  group_by(country)|>
+  filter(sentiment_int==-1)|>
+  mutate(nu=sum(sentiment_int))|>
+  arrange(nu)|>
+  select(country, nu, sentiment_int)|>
+  drop_na()|>
+  filter(!(country %in% c("India", "USA", "England", "United States")))|>
+  distinct(country, nu)|>
+  head(n=3)
+
+pos_AugSep20<-tidy_AugSep20|>
+  group_by(country)|>
+  filter(sentiment_int==1)|>
+  mutate(nu=sum(sentiment_int))|>
+  arrange(desc(nu))|>
+  select(country,nu, sentiment_int)|>
+  drop_na()|>
+  distinct(country, nu)|>
+  head(n=3)
+  
+neg_AugSep20<-tidy_AugSep20|>
+  group_by(country)|>
+  filter(sentiment_int==-1)|>
+  mutate(nu=sum(sentiment_int))|>
+  arrange(nu)|>
+  select(country, nu, sentiment_int)|>
+  drop_na()|>
+  filter(!(country %in% c("India", "USA", "England", "United States")))|>
+  distinct(country, nu)|>
+  head(n=3)
+
+max_pos_countries<-bind_rows(pos_AprJun20, pos_AprJun21, pos_AugSep20)
+max_pos_countries<-max_pos_countries|>
+  group_by(country)|>
+  arrange(desc(nu))
+min_neg_countries<-bind_rows(neg_AprJun20, neg_AprJun21, neg_AugSep20)
+min_neg_countries<-min_neg_countries|>
+  group_by(country)|>
+  arrange(nu)#most of the countries in the top 3 are because of the number of inhabitants - they ended up to be the same in both analysis
+```
+
+
+```{r}
+#DO NOT RUN IT AGAIN - IT WILL NOT BE HAPPY
+#First positive country - tweets related
+first_pos_country <- max_pos_countries |>
+  head(n = 1) |>
+  pull(country)
+
+tidy_AprJun20_posCountry<-tidy_AprJun20|>
+  group_by(country)|>
+  filter(country %in% first_pos_country)
+
+tidy_AprJun21_posCountry<-tidy_AprJun21|>
+  group_by(country)|>
+  filter(country %in% first_pos_country)
+
+tidy_AugSep20_posCountry<-tidy_AugSep20|>
+  group_by(country)|>
+  filter(country %in% first_pos_country)
+
+all_firstPos_tweet<-bind_rows(tidy_AprJun20_posCountry, tidy_AprJun21_posCountry, tidy_AugSep20_posCountry)
+
+write.csv(all_firstPos_tweet, "data//tidy//India_tweets.csv", row.names = FALSE) #writing it back to create a smaller dataset
+
+```
+
+```{r}
+#DO NOT RUN IT AGAIN - IT WILL NOT BE HAPPY
+#First negative country - tweets related (because of vaccination data)
+first_neg_country <- min_neg_countries |>
+  head(2) |>
+  arrange(desc(nu))|>
+  head(1)|>
+  pull(country)
+
+tidy_AprJun20_negCountry<-tidy_AprJun20|>
+  group_by(country)|>
+  filter(country %in% first_neg_country)
+
+tidy_AprJun21_negCountry<-tidy_AprJun21|>
+  group_by(country)|>
+  filter(country %in% first_neg_country)
+
+tidy_AugSep20_negCountry<-tidy_AugSep20|>
+  group_by(country)|>
+  filter(country %in% first_neg_country)
+
+all_firstNeg_tweet<-bind_rows(tidy_AprJun20_negCountry, tidy_AprJun21_negCountry, tidy_AugSep20_negCountry)
+
+write.csv(all_firstNeg_tweet, "data//tidy//Canada_tweets.csv", row.names = FALSE)# writing it to a csv to create a smaller and tidy dataset
+```
+
+
+```{r}
+#We ended up not using this
+canada_sample_month<-Canada_tweets |>
+  group_by(created_at) %>%
+  slice_head(n = 3)
+
+write.csv(canada_sample_month, "data//tidy//Canada_sample.csv", row.names = FALSE)
+```
+
+
+```{r}
+#This is the data set we used to create the sentimental analysis graph for Canada - here is all the modification (joins and other functions) e used
+canada_tweets_text<-canada_sample_month|>
+  select(original_text, created_at, city)|>
+  unnest_tokens(word, original_text)|>
+  left_join(lexicon_english, by="word")|>
+  mutate(value = coalesce(value, 0))
+canada_tweets_text <- tibble::rowid_to_column(canada_tweets_text, "index")
+
+canada_tweets_text|>
+  summarise(total_value = sum(value, na.rm = TRUE))
+
+write.csv(canada_tweets_text, "data//tidy//Canada_text_tidy.csv", row.names = FALSE)
+```
+
+
+```{r}
+india_sample_month<-India_tweets |>
+  group_by(created_at) %>%
+  slice_head(n = 3)
+
+
+write.csv(india_sample_month, "data//tidy//India_sample.csv", row.names = FALSE)
+```
+
+```{r}
+#This is the data set we used to create the sentimental analysis graph for India - here is all the modification (joins and other functions) we used
+india_tweets_text<-india_sample_month|>
+  select(original_text, created_at, city)|>
+  unnest_tokens(word, original_text)|>
+  left_join(lexicon_english, by="word")|>
+  mutate(value = coalesce(value, 0))
+india_tweets_text <- tibble::rowid_to_column(india_tweets_text, "index")
+
+india_tweets_text|>
+  summarise(total_value = sum(value, na.rm = TRUE))
+
+write.csv(india_tweets_text, "data//tidy//India_text_tidy.csv", row.names = FALSE)
+```
+
+
+
+
+
+

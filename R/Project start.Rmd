@@ -1,0 +1,90 @@
+---
+title: "Project start"
+output: html_document
+---
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(tidytext)
+library(readxl)
+library(wordcloud)
+```
+
+```{r}
+text <- "R language is a powerful and flexible programming language for data analysis and visualization. R language is widely used in statistics and machine learning."
+
+# Create a word cloud
+wordcloud(words = strsplit(text, " ")[[1]], scale=c(3,0.5), colors=brewer.pal(8, "Dark2"))
+```
+
+
+
+
+
+
+```{r}
+#Canada tweets dataset
+canada_tweets<-read_csv("//home/rstudio/courses/2023-24-semester1-mscs-164/Project/Sat_Paloma_Kaashya_Project/canada_tweets.csv")
+
+canada_tweets<-canada_tweets|>
+  select(is_replied, is_reply_to, replies, retweets, text, timestamp, timestamp_epochs, user_id, city)
+
+canada_tweets_text<-canada_tweets|>
+  select(user_id, text, city, province_name)|>
+  unnest_tokens(word, text)
+```
+
+```{r}
+#Canada vaccination dataset
+canada_vaccination<-read_csv("~/Mscs 164 F23/Project/Sat_Paloma_Kaashya_Project/vaccination-coverage-map.csv")
+
+canada_vaccination<-canada_vaccination|>
+  select(week_end, pruid, prename, numtotal_atleast1dose, numtotal_partially, proptotal_atleast1dose, proptotal_partially)
+```
+
+```{r}
+#Canada cities dataset
+canadacities <- read_excel("//home/rstudio/courses/2023-24-semester1-mscs-164/Project/Sat_Paloma_Kaashya_Project/canadacities.xlsx")
+
+canada_cities_provinces<-canadacities|>
+  select(city, province_name)
+```
+
+```{r}
+canada_tweets<-canada_tweets|>
+  full_join(canada_cities_provinces)
+```
+
+```{r}
+#sentimental data - tweets analysis
+lexicon_english <- get_sentiments("afinn")
+
+lines <- readLines("//home/rstudio/courses/2023-24-semester1-mscs-164/Project/Sat_Paloma_Kaashya_Project/english_words_479k.txt")
+english_words<-data.frame(word = lines, stringsAsFactors = FALSE)
+```
+
+--------------------------
+
+```{r}
+canada_tweets_text |>
+  right_join(english_words, by="word")|>
+  drop_na()|>
+  right_join(lexicon_english, by = "word") |>
+  drop_na()|>
+  group_by(word) |>
+  summarise(sentiment_score = sum(value))|>
+ggplot(aes(x = sentiment_score)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black") +
+  labs(title = "Sentimental analysis Canada",
+       subtitle = "Analysis of tweets from Canada related to Covid vaccination",
+       x = "Sentiment Score",
+       y = "Frequency")
+```
+
+```{r}
+canada_tweets_text|>
+  group_by(city, word)|> 
+  count() 
+```

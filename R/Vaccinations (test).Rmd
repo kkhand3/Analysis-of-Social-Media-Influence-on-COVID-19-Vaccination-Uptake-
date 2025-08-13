@@ -1,0 +1,40 @@
+---
+title: "Vaccines"
+author: "Paloma Guth Kronabuer, Kaashya Khandelwal, Sat Barseghyan"
+date: "12/13/2023"
+output: html_document
+---
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(tidytext)
+library(readxl)
+library (forcats)
+library(viridis)
+```
+
+```{r}
+owid_covid_data <- read_csv("data//raw//owid-covid-data.csv")
+```
+
+```{r}
+owid_covid_data |>
+  group_by(iso_code)|>
+  select(iso_code, location, date, new_vaccinations)|>
+  filter(!is.na(new_vaccinations), location %in% c("World", "Canada", "India"), between(date, as.Date('2020-01-01'), as.Date('2023-01-01')))|>
+  arrange(date) |>
+ggplot(aes(x = date, y=new_vaccinations/1e7, color=fct_reorder2
+           (location, new_vaccinations, date, max))) +
+  geom_line() +
+  labs(title = "Daily COVID-19 Vaccine Doses Administered with 7-day Rolling Average",
+       x = "Date",
+       y = "Doses Administered",
+       color= "Location",
+       caption="Mathieu, E., Ritchie, H., Ortiz-Ospina, E. et al. A global database of COVID-19 vaccinations. Nat Hum Behav (2021)") +
+  theme_minimal()+
+  scale_y_continuous(labels = function(x) paste0(x, "M")) +
+  scale_color_viridis(discrete=TRUE)
+```
+
